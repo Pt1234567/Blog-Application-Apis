@@ -13,6 +13,7 @@ import java.util.Date;
 @Setter
 public class PostDto {
 
+    private int id; // 'id' field is added to the PostDto class
     private String postTitle;
     private String postContent;
     private String postImage;
