@@ -4,6 +4,7 @@ import com.blogApplication.blogapis.entities.Category;
 import com.blogApplication.blogapis.entities.Post;
 import com.blogApplication.blogapis.entities.User;
 import com.blogApplication.blogapis.exception.ResourceNotFoundException;
+import com.blogApplication.blogapis.payloads.CommentDto;
 import com.blogApplication.blogapis.payloads.PostDto;
 import com.blogApplication.blogapis.payloads.PostResponse;
 import com.blogApplication.blogapis.repositories.CategoryRepo;
@@ -45,7 +46,7 @@ public class PostServiceImpl implements PostService {
 
 
         Post post=this.modelMapper.map(postDto,Post.class);
-        post.setPostImage("default.png");
+        post.setPostImage("");
         post.setAddedDate(new Date());
         post.setUser(user);
         post.setCategory(category);
@@ -61,6 +62,7 @@ public class PostServiceImpl implements PostService {
         Post post=this.postRepo.findById(id).orElseThrow(() -> new ResourceNotFoundException("Post","id",id));
         post.setPostTitle(postDto.getPostTitle());
         post.setPostContent(postDto.getPostContent());
+        post.setPostImage(postDto.getPostImage());
 
         Post updatedPost=this.postRepo.save(post);
         return this.modelMapper.map(updatedPost,PostDto.class);
@@ -105,7 +107,18 @@ public class PostServiceImpl implements PostService {
     public PostDto getPostById(int id) {
 
         Post post=this.postRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Post","id",id));
-        return this.modelMapper.map(post,PostDto.class);
+        // Map the Post entity to PostDto
+        PostDto postDto = this.modelMapper.map(post, PostDto.class);
+
+        // Fetch comments associated with the post and map them to CommentDto objects
+        List<CommentDto> commentDtoList = post.getComments().stream()
+                .map(comment -> this.modelMapper.map(comment, CommentDto.class))
+                .collect(Collectors.toList());
+
+        // Set the commentList field in the PostDto
+        postDto.setCommentList(commentDtoList);
+
+        return postDto;
     }
 
     @Override
@@ -129,7 +142,9 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<Post> searchPost(String keyword) {
-        return null;
+    public List<PostDto> searchPost(String keyword) {
+        List<Post> postList=this.postRepo.findByPostTitleContaining(keyword);
+        List<PostDto> postDtos=postList.stream().map(post->this.modelMapper.map(post,PostDto.class)).collect(Collectors.toList());
+         return postDtos;
     }
 }

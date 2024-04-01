@@ -30,5 +30,5 @@ public interface PostService {
     List<PostDto> getPostByCategory(int category_id);
 
     //searchPost
-    List<Post> searchPost(String keyword);
+    List<PostDto> searchPost(String keyword);
 }

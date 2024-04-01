@@ -2,6 +2,7 @@ package com.blogApplication.blogapis.services.impl;
 
 import com.blogApplication.blogapis.entities.User;
 import com.blogApplication.blogapis.exception.ResourceNotFoundException;
+import com.blogApplication.blogapis.payloads.CommentDto;
 import com.blogApplication.blogapis.payloads.UserDto;
 import com.blogApplication.blogapis.repositories.UserRepo;
 import com.blogApplication.blogapis.services.UserService;
@@ -40,7 +41,13 @@ public class UserServiceImpl implements UserService {
     public UserDto getUserById(int id) {
          User user=this.userRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("User","id",id));
 
-         return EntityTodto(user);
+         UserDto userDto=this.modelMapper.map(user,UserDto.class);
+
+         // fetch all comments associated with user
+         List<CommentDto> commentDtos=user.getComments().stream().map((comment ->this.modelMapper.map(comment,CommentDto.class) )).collect(Collectors.toList());
+         userDto.setCommentList(commentDtos);
+
+         return userDto;
     }
 
     @Override
