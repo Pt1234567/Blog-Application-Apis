@@ -10,7 +10,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @NoArgsConstructor
 @Getter
@@ -32,6 +34,8 @@ public class UserDto {
     @NotEmpty
     private String about;
 
-    private List<CommentDto> commentList=new ArrayList<>();
+    private Set<CommentDto> commentList=new HashSet<>();
+
+    private Set<RoleDto> roles=new HashSet<>();
 
 }

@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface UserService {
 
+    UserDto registerNewUser(UserDto userDto);
+
     UserDto createUser(UserDto userDto);
     UserDto getUserById(int id);
     UserDto updateUser(int id, UserDto userDto);

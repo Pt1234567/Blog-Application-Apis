@@ -1,13 +1,17 @@
 package com.blogApplication.blogapis.services.impl;
 
+import com.blogApplication.blogapis.config.AppConstants;
+import com.blogApplication.blogapis.entities.Role;
 import com.blogApplication.blogapis.entities.User;
 import com.blogApplication.blogapis.exception.ResourceNotFoundException;
 import com.blogApplication.blogapis.payloads.CommentDto;
 import com.blogApplication.blogapis.payloads.UserDto;
+import com.blogApplication.blogapis.repositories.RoleRepo;
 import com.blogApplication.blogapis.repositories.UserRepo;
 import com.blogApplication.blogapis.services.UserService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,7 +24,28 @@ public class UserServiceImpl implements UserService {
     private UserRepo userRepo;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private ModelMapper modelMapper;
+
+    @Autowired
+    private RoleRepo roleRepo;
+
+    @Override
+    public UserDto registerNewUser(UserDto userDto) {
+        User user=this.modelMapper.map(userDto,User.class);
+
+        user.setPassword(this.passwordEncoder.encode(user.getPassword()));
+
+        //role
+        Role role=this.roleRepo.findById(AppConstants.NORMAL_USER).get();
+        user.getRoles().add(role);
+
+        User saved=this.userRepo.save(user);
+
+        return this.modelMapper.map(saved,UserDto.class);
+    }
 
     @Override
     public UserDto createUser(UserDto userDto) {
@@ -42,10 +67,6 @@ public class UserServiceImpl implements UserService {
          User user=this.userRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("User","id",id));
 
          UserDto userDto=this.modelMapper.map(user,UserDto.class);
-
-         // fetch all comments associated with user
-         List<CommentDto> commentDtos=user.getComments().stream().map((comment ->this.modelMapper.map(comment,CommentDto.class) )).collect(Collectors.toList());
-         userDto.setCommentList(commentDtos);
 
          return userDto;
     }
