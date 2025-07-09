@@ -38,6 +38,11 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private CategoryRepo categoryRepo;
 
+
+    @Autowired
+    private RedisService redisService;
+
+
     @Override
     public PostDto createPost(PostDto postDto,int user_id,int category_id) {
 
@@ -65,6 +70,9 @@ public class PostServiceImpl implements PostService {
         post.setPostImage(postDto.getPostImage());
 
         Post updatedPost=this.postRepo.save(post);
+        // clear old post from cache
+        redisService.set("post::" + id, null, 1L);
+
         return this.modelMapper.map(updatedPost,PostDto.class);
     }
 
@@ -76,6 +84,14 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public PostResponse getAllPosts(int pageNumber, int pageSize,String sortBy,String sortDir) {
+
+        String cacheKey = String.format("posts::page::%d::%d::%s::%s", pageNumber, pageSize, sortBy, sortDir);
+
+        PostResponse cachedResponse=redisService.get(cacheKey,PostResponse.class);
+        if(cachedResponse!=null){
+            return cachedResponse;
+        }
+
 
         Sort sort=null;
 
@@ -100,12 +116,24 @@ public class PostServiceImpl implements PostService {
         postResponse.setTotalElements(pagePost.getTotalElements());
         postResponse.setTotalPages(pagePost.getTotalPages());
         postResponse.setLastPage(pagePost.isLast());
+
+        redisService.set(cacheKey,postResponse,120L);
+
         return postResponse;
     }
 
     @Override
     public PostDto getPostById(int id) {
 
+        String cacheKey="post::"+id;
+
+        //Try to get from redis cache
+        PostDto cachedPost=redisService.get(cacheKey,PostDto.class);
+        if(cachedPost!=null){
+            return cachedPost;
+        }
+
+        //fetch from DB
         Post post=this.postRepo.findById(id).orElseThrow(()->new ResourceNotFoundException("Post","id",id));
         // Map the Post entity to PostDto
         PostDto postDto = this.modelMapper.map(post, PostDto.class);
@@ -118,33 +146,62 @@ public class PostServiceImpl implements PostService {
         // Set the commentList field in the PostDto
         postDto.setCommentList(commentDtoList);
 
+        redisService.set(cacheKey,postDto,300L);
+
         return postDto;
     }
 
     @Override
     public List<PostDto> getPostByUser(int user_id) {
+
+        String cachedKey="post::user"+user_id;
+        List<PostDto> cachedPosts=redisService.get(cachedKey,List.class);
+        if(cachedPosts!=null){
+            return cachedPosts;
+        }
+
         User user=this.userRepo.findById(user_id).orElseThrow(()->new ResourceNotFoundException("User","id",user_id));
 
         List<Post> postList=this.postRepo.findByUser(user);
 
         List<PostDto> postDtos=   postList.stream().map(post->this.modelMapper.map(post,PostDto.class)).collect(Collectors.toList());
 
+        redisService.set(cachedKey,postDtos,180L);
+
         return postDtos;
     }
 
     @Override
     public List<PostDto> getPostByCategory(int category_id) {
+
+          String cachedKey="post::category"+category_id;
+          List<PostDto> cachedPostDto=redisService.get(cachedKey,List.class);
+          if(cachedPostDto!=null)
+          {
+              return cachedPostDto;
+          }
+
           List<Post> postList=this.postRepo.findByCategory(this.categoryRepo.findById(category_id).orElseThrow(()->new ResourceNotFoundException("Category","id",category_id)));
 
           List<PostDto> postDtos=   postList.stream().map(post->this.modelMapper.map(post,PostDto.class)).collect(Collectors.toList());
+
+          redisService.set(cachedKey,postDtos,200L);
 
           return postDtos;
     }
 
     @Override
     public List<PostDto> searchPost(String keyword) {
+
+        String cachedKey="post::search"+keyword;
+        List<PostDto> cachedPostDtos=redisService.get(cachedKey,List.class);
+        if(cachedPostDtos!=null){
+            return cachedPostDtos;
+        }
+
         List<Post> postList=this.postRepo.findByPostTitleContaining(keyword);
         List<PostDto> postDtos=postList.stream().map(post->this.modelMapper.map(post,PostDto.class)).collect(Collectors.toList());
-         return postDtos;
+        redisService.set(cachedKey,postDtos,200L);
+        return postDtos;
     }
 }
